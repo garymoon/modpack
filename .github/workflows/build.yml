@@ -1,0 +1,69 @@
+name: Build
+on:
+  push:
+    branches:
+    - master
+
+jobs:
+  smbmod:
+    runs-on: ubuntu-20.04
+
+    steps:
+#    - name: Setup Dependencies
+#      run: |
+#        #sudo apt-get update -y -qq
+#        #sudo apt-get install -y -qq ...
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build
+      run: ./ci.sh
+
+    - name: Store artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: artifacts
+        path: |
+          *.dat
+          *.lno
+          *.zip
+          *.pk3
+        if-no-files-found: error
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.VERSION }}
+        prerelease: true
+
+    - name: Upload smbmod
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: smbmod-${{ env.VERSION }}.zip
+        asset_name: smbmod-${{ env.VERSION }}.zip
+        asset_content_type: application/zip
+
+    - name: Upload csprogs
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: csprogs-${{ env.VERSION }}.pk3
+        asset_name: csprogs-${{ env.VERSION }}.pk3
+        asset_content_type: application/zip
+
+    - name: Upload csprogs to Scaleway
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.SCALEWAY_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.SCALEWAY_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: nl-ams
+        AWS_DEFAULT_OUTPUT: json
+      run: aws s3 cp --acl public-read --endpoint-url https://s3.nl-ams.scw.cloud csprogs-${{ env.VERSION }}.pk3 s3://xonotic/
