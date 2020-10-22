@@ -1,0 +1,39 @@
+name: Build
+on:
+  push:
+    branches:
+    - master
+
+jobs:
+  Linux:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Setup Dependencies
+      run: |
+        #sudo apt-get update -y -qq
+        #sudo apt-get install -y -qq ...
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build
+      run: ./ci.sh
+
+    - name: Store artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: artifacts
+        path: |
+          *.dat
+          *.lno
+          deploy/*
+        if-no-files-found: error
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: master
+        prerelease: true
